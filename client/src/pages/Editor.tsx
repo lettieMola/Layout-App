@@ -10,13 +10,14 @@ import FilterControls from "@/components/FilterControls";
 import ToolBar from "@/components/ToolBar";
 import BottomNavigation from "@/components/BottomNavigation";
 import ImageThumbnails from "@/components/ImageThumbnails";
+import ChatAssistant from "@/components/ChatAssistant";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, MessageCircle } from "lucide-react";
 import { useLocation } from "wouter";
 import { GRID_LAYOUTS } from "@/lib/constants";
-import { FilterOption } from "@shared/schema";
+import { FilterOption, AssistantAction } from "@shared/schema";
 
 export default function Editor() {
   const [location, setLocation] = useLocation();
@@ -25,15 +26,19 @@ export default function Editor() {
   const [activeTab, setActiveTab] = useState('layouts');
   const [selectedFilter, setSelectedFilter] = useState<FilterOption | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   
   const {
     images,
     selectedLayout,
     selectedMirror,
+    selectedImageId,
     addImage,
     removeImage,
     setLayout,
     setMirrorLayout,
+    selectImage,
+    replaceImage,
     undo,
     redo,
     reset,
@@ -113,11 +118,50 @@ export default function Editor() {
     });
   };
 
-  const handleAiProcessComplete = (imageIndex: number, result: string, effectName: string) => {
+  const handleAiProcessComplete = (imageId: string, result: string, effectName: string) => {
+    // Replace the processed image
+    replaceImage(imageId, result);
+    
     toast({
       title: "AI Processing Complete",
       description: `${effectName} applied successfully!`,
     });
+  };
+
+  const handleChatAction = (action: AssistantAction) => {
+    switch (action.type) {
+      case 'setLayout':
+        const layout = GRID_LAYOUTS.find(l => l.id === action.layoutId);
+        if (layout) {
+          setLayout(layout);
+        }
+        break;
+      case 'applyFilter':
+        console.log('Applying filter:', action.filter);
+        break;
+      case 'removeBackground':
+        if (images[action.imageIndex]) {
+          // Mock AI processing for demo
+          handleAiProcessComplete(images[action.imageIndex].id, images[action.imageIndex].uri, 'Background Removal');
+        }
+        break;
+      case 'enhanceFace':
+        if (images[action.imageIndex]) {
+          handleAiProcessComplete(images[action.imageIndex].id, images[action.imageIndex].uri, 'Face Enhancement');
+        }
+        break;
+      case 'upscale':
+        if (images[action.imageIndex]) {
+          handleAiProcessComplete(images[action.imageIndex].id, images[action.imageIndex].uri, 'Image Upscaling');
+        }
+        break;
+      case 'save':
+        handleSave();
+        break;
+      case 'download':
+        handleDownload();
+        break;
+    }
   };
 
   const renderTabContent = () => {
@@ -149,7 +193,9 @@ export default function Editor() {
         return (
           <AITools 
             images={images}
+            selectedImageId={selectedImageId}
             onAiProcessComplete={handleAiProcessComplete}
+            onImageSelect={selectImage}
           />
         );
       default:
@@ -184,7 +230,14 @@ export default function Editor() {
           
           <h1 className="text-lg font-semibold">Editor</h1>
           
-          <div className="w-16" /> {/* Spacer for centering */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsChatOpen(true)}
+            data-testid="button-open-chat"
+          >
+            <MessageCircle className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
@@ -234,6 +287,18 @@ export default function Editor() {
           imageCount={images.length}
         />
       </div>
+
+      {/* Chat Assistant */}
+      <ChatAssistant
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        context={{
+          images: images.map(img => img.uri),
+          layout: selectedLayout?.id || null,
+          filters: [],
+        }}
+        onActionExecute={handleChatAction}
+      />
     </div>
   );
 }
