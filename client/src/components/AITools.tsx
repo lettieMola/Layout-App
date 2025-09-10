@@ -2,20 +2,25 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AI_CAPABILITIES } from "@/lib/constants";
 import { Bot, Loader2, Scissors, Paintbrush, Smile, Tag, Palette, ZoomIn } from "lucide-react";
-import { CollageImage } from "@shared/schema";
+import { CollageImage, AIEffect } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface AIToolsProps {
   images: CollageImage[];
-  onAiProcessComplete: (imageIndex: number, result: string, effectName: string) => void;
+  selectedImageId: string | null;
+  onAiProcessComplete: (imageId: string, result: string, effectName: string) => void;
+  onImageSelect: (imageId: string | null) => void;
   className?: string;
 }
 
-export default function AITools({ images, onAiProcessComplete, className }: AIToolsProps) {
+export default function AITools({ images, selectedImageId, onAiProcessComplete, onImageSelect, className }: AIToolsProps) {
   const [processing, setProcessing] = useState<string | null>(null);
   const [assistantMessage, setAssistantMessage] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const getCapabilityIcon = (iconName: string) => {
     switch (iconName) {
@@ -38,8 +43,24 @@ export default function AITools({ images, onAiProcessComplete, className }: AITo
 
   const handleAiAction = async (capabilityId: string, capabilityName: string) => {
     if (images.length === 0) {
-      setAssistantMessage('Please add an image first');
-      setTimeout(() => setAssistantMessage(null), 3000);
+      toast({
+        title: "No Images",
+        description: "Please add an image first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const targetImage = selectedImageId 
+      ? images.find(img => img.id === selectedImageId)
+      : images[0];
+    
+    if (!targetImage) {
+      toast({
+        title: "No Image Selected",
+        description: "Please select an image to process",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -47,21 +68,39 @@ export default function AITools({ images, onAiProcessComplete, className }: AITo
     setAssistantMessage(`🤖 Applying ${capabilityName}... please wait`);
 
     try {
-      // Call backend AI processing
-      const response = await apiRequest('POST', '/api/process-image', {
-        imageData: images[0].uri,
-        effect: capabilityId,
-        filter: capabilityName
+      // Call new AI processing endpoint
+      const response = await apiRequest('POST', '/api/ai/process', {
+        imageData: targetImage.uri,
+        effect: capabilityId as AIEffect,
+        options: {}
       });
       
       const result = await response.json();
       
-      setAssistantMessage(`✅ ${capabilityName} applied successfully!`);
-      onAiProcessComplete(0, result.processedImage, capabilityName);
+      if (result.success) {
+        setAssistantMessage(`✅ ${capabilityName} applied successfully!`);
+        onAiProcessComplete(targetImage.id, result.processedImage, capabilityName);
+        toast({
+          title: "AI Processing Complete",
+          description: result.message || `${capabilityName} applied successfully`,
+        });
+      } else {
+        setAssistantMessage(`❌ ${result.message || 'AI processing failed'}`);
+        toast({
+          title: "AI Processing Failed",
+          description: result.message || "Please try again",
+          variant: "destructive",
+        });
+      }
       
     } catch (error) {
       console.error('AI processing error:', error);
       setAssistantMessage('❌ AI processing failed. Please try again.');
+      toast({
+        title: "Error",
+        description: "AI processing failed. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setProcessing(null);
       setTimeout(() => setAssistantMessage(null), 5000);
