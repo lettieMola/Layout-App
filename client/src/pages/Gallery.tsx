@@ -140,10 +140,16 @@ export default function Gallery() {
     });
   };
 
-  const handleBackupToDrive = () => {
-    setIsBackingUp(true);
-    backupMutation.mutate();
-    setTimeout(() => setIsBackingUp(false), 2000);
+  const handleBackupToDrive = async () => {
+    try {
+      setIsBackingUp(true);
+      await backupMutation.mutateAsync();
+      localStorage.setItem('lastBackupTime', Date.now().toString());
+    } catch (error) {
+      console.error('Manual backup failed:', error);
+    } finally {
+      setIsBackingUp(false);
+    }
   };
 
   const formatDate = (dateString: string | Date) => {
@@ -197,7 +203,7 @@ export default function Gallery() {
               ) : (
                 <Cloud className="w-4 h-4" />
               )}
-              Backup to Drive
+              {isBackingUp || backupMutation.isPending ? 'Backing up...' : 'Backup to Drive'}
             </Button>
             
             <Button

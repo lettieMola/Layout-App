@@ -170,7 +170,12 @@ export default function Editor() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setLocation('/')}
+            onClick={() => {
+              // Navigate back to gallery if we came from there, otherwise go home
+              const urlParams = new URLSearchParams(location.split('?')[1] || '');
+              const collageId = urlParams.get('collageId');
+              setLocation(collageId ? '/gallery' : '/');
+            }}
             data-testid="button-back"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
