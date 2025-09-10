@@ -18,6 +18,7 @@ import { ArrowLeft, MessageCircle } from "lucide-react";
 import { useLocation } from "wouter";
 import { GRID_LAYOUTS } from "@/lib/constants";
 import { FilterOption, AssistantAction } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Editor() {
   const [location, setLocation] = useLocation();
@@ -168,7 +169,18 @@ export default function Editor() {
         }
         break;
       case 'applyFilter':
-        console.log('Applying filter:', action.filter);
+        if (action.filter) {
+          const filterOption: FilterOption = {
+            id: action.filter,
+            name: action.filter,
+            value: action.filter
+          };
+          setSelectedFilter(filterOption);
+          toast({
+            title: "Filter Applied",
+            description: `${action.filter} filter applied to your collage`,
+          });
+        }
         break;
       case 'removeBackground':
         if (images[action.imageIndex]) {
