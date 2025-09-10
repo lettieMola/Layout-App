@@ -74,3 +74,64 @@ export interface AICapability {
   description: string;
   icon: string;
 }
+
+// AI Processing Types
+export const AIEffectSchema = z.enum([
+  'bg_remove',
+  'style_transfer', 
+  'face_enhance',
+  'upscale',
+  'colorization',
+  'object_detection'
+]);
+
+export const AIProcessRequestSchema = z.object({
+  imageData: z.string(), // base64 encoded image
+  effect: AIEffectSchema,
+  options: z.record(z.any()).optional(),
+});
+
+export const AIProcessResponseSchema = z.object({
+  processedImage: z.string(),
+  success: z.boolean(),
+  message: z.string().optional(),
+});
+
+// Chat Assistant Types
+export const ChatMessageSchema = z.object({
+  role: z.enum(['user', 'assistant', 'system']),
+  content: z.string(),
+  timestamp: z.date().optional(),
+});
+
+export const AssistantActionSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('setLayout'), layoutId: z.string() }),
+  z.object({ type: z.literal('applyFilter'), filter: z.string() }),
+  z.object({ type: z.literal('removeBackground'), imageIndex: z.number() }),
+  z.object({ type: z.literal('enhanceFace'), imageIndex: z.number() }),
+  z.object({ type: z.literal('upscale'), imageIndex: z.number() }),
+  z.object({ type: z.literal('save') }),
+  z.object({ type: z.literal('download') }),
+]);
+
+export const ChatRequestSchema = z.object({
+  messages: z.array(ChatMessageSchema),
+  context: z.object({
+    images: z.array(z.string()).optional(),
+    layout: z.string().optional(), 
+    filters: z.array(z.string()).optional(),
+  }).optional(),
+});
+
+export const ChatResponseSchema = z.object({
+  text: z.string(),
+  actions: z.array(AssistantActionSchema).optional(),
+});
+
+export type AIEffect = z.infer<typeof AIEffectSchema>;
+export type AIProcessRequest = z.infer<typeof AIProcessRequestSchema>;
+export type AIProcessResponse = z.infer<typeof AIProcessResponseSchema>;
+export type ChatMessage = z.infer<typeof ChatMessageSchema>;
+export type AssistantAction = z.infer<typeof AssistantActionSchema>;
+export type ChatRequest = z.infer<typeof ChatRequestSchema>;
+export type ChatResponse = z.infer<typeof ChatResponseSchema>;

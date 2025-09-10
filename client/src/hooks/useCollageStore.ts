@@ -7,6 +7,7 @@ interface CollageState {
   selectedLayout: GridLayout | null;
   selectedMirror: MirrorLayout;
   filters: FilterOption[];
+  selectedImageId: string | null;
   history: CollageState[];
   historyIndex: number;
 }
@@ -17,6 +18,7 @@ export function useCollageStore() {
     selectedLayout: null,
     selectedMirror: { type: 'vertical', parts: 2 },
     filters: [],
+    selectedImageId: null,
     history: [],
     historyIndex: 0,
   });
@@ -140,8 +142,32 @@ export function useCollageStore() {
       selectedLayout: null,
       selectedMirror: { type: 'vertical', parts: 2 },
       filters: [],
+      selectedImageId: null,
       history: [],
       historyIndex: 0,
+    });
+  }, []);
+
+  const selectImage = useCallback((imageId: string | null) => {
+    setState(prev => ({ ...prev, selectedImageId: imageId }));
+  }, []);
+
+  const replaceImage = useCallback((imageId: string, newUri: string) => {
+    setState(prev => {
+      const newImages = prev.images.map(img => 
+        img.id === imageId ? { ...img, uri: newUri } : img
+      );
+      const newState = { ...prev, images: newImages };
+      
+      // Save to history
+      const newHistory = prev.history.slice(0, prev.historyIndex + 1);
+      newHistory.push(newState);
+      
+      return {
+        ...newState,
+        history: newHistory,
+        historyIndex: newHistory.length - 1,
+      };
     });
   }, []);
 
@@ -178,6 +204,7 @@ export function useCollageStore() {
         selectedLayout: collage.layout || null,
         selectedMirror: collage.mirrorSettings || { type: 'vertical', parts: 2 },
         filters: collage.filters || [],
+        selectedImageId: null,
         history: [],
         historyIndex: 0,
       });
@@ -196,6 +223,8 @@ export function useCollageStore() {
     removeImage,
     setLayout,
     setMirrorLayout,
+    selectImage,
+    replaceImage,
     undo,
     redo,
     reset,
