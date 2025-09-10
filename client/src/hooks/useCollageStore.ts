@@ -155,13 +155,8 @@ export function useCollageStore() {
     };
     
     try {
-      const savedCollage = await apiRequest('/api/collages', {
-        method: 'POST',
-        body: JSON.stringify(projectData),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await apiRequest('POST', '/api/collages', projectData);
+      const savedCollage = await response.json();
       
       console.log('Project saved successfully!', savedCollage);
       return savedCollage;
@@ -175,7 +170,8 @@ export function useCollageStore() {
 
   const loadProject = useCallback(async (collageId: string) => {
     try {
-      const collage = await apiRequest(`/api/collages/${collageId}`);
+      const response = await apiRequest('GET', `/api/collages/${collageId}`);
+      const collage = await response.json();
       
       setState({
         images: collage.images || [],

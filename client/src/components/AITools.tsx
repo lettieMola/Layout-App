@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { AI_CAPABILITIES } from "@/lib/constants";
 import { Bot, Loader2, Scissors, Paintbrush, Smile, Tag, Palette, ZoomIn } from "lucide-react";
 import { CollageImage } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
 
 interface AIToolsProps {
   images: CollageImage[];
@@ -46,14 +47,17 @@ export default function AITools({ images, onAiProcessComplete, className }: AITo
     setAssistantMessage(`🤖 Applying ${capabilityName}... please wait`);
 
     try {
-      // Mock AI processing delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Call backend AI processing
+      const response = await apiRequest('POST', '/api/process-image', {
+        imageData: images[0].uri,
+        effect: capabilityId,
+        filter: capabilityName
+      });
       
-      // Mock successful result
-      const result = images[0].uri; // In real app, this would be the processed image
+      const result = await response.json();
       
       setAssistantMessage(`✅ ${capabilityName} applied successfully!`);
-      onAiProcessComplete(0, result, capabilityName);
+      onAiProcessComplete(0, result.processedImage, capabilityName);
       
     } catch (error) {
       console.error('AI processing error:', error);
