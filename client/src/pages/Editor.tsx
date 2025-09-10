@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useCollageStore } from "@/hooks/useCollageStore";
 import { toPng } from 'html-to-image';
 import Canvas from "@/components/Canvas";
@@ -19,11 +19,12 @@ import { GRID_LAYOUTS } from "@/lib/constants";
 import { FilterOption } from "@shared/schema";
 
 export default function Editor() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const canvasRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState('layouts');
   const [selectedFilter, setSelectedFilter] = useState<FilterOption | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   
   const {
     images,
@@ -37,12 +38,41 @@ export default function Editor() {
     redo,
     reset,
     saveProject,
+    loadProject,
     canUndo,
     canRedo
   } = useCollageStore();
 
   // Initialize with first layout if none selected
   const currentLayout = selectedLayout || GRID_LAYOUTS[0];
+
+  // Load existing collage if collageId is provided in URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.split('?')[1] || '');
+    const collageId = urlParams.get('collageId');
+    
+    if (collageId && loadProject) {
+      setIsLoading(true);
+      loadProject(collageId)
+        .then(() => {
+          toast({
+            title: "Collage Loaded",
+            description: "Your collage has been loaded successfully",
+          });
+        })
+        .catch((error) => {
+          console.error('Failed to load collage:', error);
+          toast({
+            title: "Load Failed",
+            description: "Failed to load the collage",
+            variant: "destructive",
+          });
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    }
+  }, [location, loadProject, toast]);
 
   const handleDownload = async () => {
     if (!canvasRef.current) {

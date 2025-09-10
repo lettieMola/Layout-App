@@ -137,21 +137,31 @@ export default function Home() {
           </Button>
         </div>
 
-        {/* Quick Start */}
+        {/* Quick Actions */}
         <Card className="p-6">
           <div className="text-center space-y-4">
-            <h3 className="text-lg font-semibold">Quick Start</h3>
-            <p className="text-sm text-muted-foreground">
-              Start creating your collage right away
-            </p>
-            <Button 
-              size="lg" 
-              className="w-full"
-              onClick={() => setLocation('/editor')}
-              data-testid="button-quick-start"
-            >
-              Create New Collage
-            </Button>
+            <h3 className="text-lg font-semibold">Quick Actions</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <Button 
+                size="lg" 
+                className="h-auto py-4 flex flex-col gap-2"
+                onClick={() => setLocation('/editor')}
+                data-testid="button-quick-start"
+              >
+                <span className="text-lg">Create New</span>
+                <span className="text-xs opacity-75">Start fresh collage</span>
+              </Button>
+              <Button 
+                size="lg" 
+                variant="outline"
+                className="h-auto py-4 flex flex-col gap-2"
+                onClick={() => setLocation('/gallery')}
+                data-testid="button-view-gallery"
+              >
+                <span className="text-lg">My Gallery</span>
+                <span className="text-xs opacity-75">View saved collages</span>
+              </Button>
+            </div>
           </div>
         </Card>
       </div>

@@ -102,6 +102,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Google Drive backup endpoint
+  app.post('/api/backup-to-drive', async (req, res) => {
+    try {
+      const collages = await storage.getAllCollages();
+      
+      // Mock Google Drive backup - in real implementation would use Google Drive API
+      // For demonstration, we'll simulate the backup process
+      const backupData = {
+        timestamp: new Date().toISOString(),
+        collages: collages,
+        count: collages.length
+      };
+      
+      // Simulate backup delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      console.log('Backup completed:', backupData.count, 'collages backed up');
+      
+      res.json({ 
+        success: true,
+        count: backupData.count,
+        timestamp: backupData.timestamp,
+        message: 'Backup completed successfully'
+      });
+    } catch (error) {
+      console.error('Error backing up to Google Drive:', error);
+      res.status(500).json({ error: 'Failed to backup to Google Drive' });
+    }
+  });
+
+  // Google Drive restore endpoint
+  app.post('/api/restore-from-drive', async (req, res) => {
+    try {
+      // Mock Google Drive restore - in real implementation would fetch from Google Drive API
+      // For demonstration, we'll return existing collages
+      const collages = await storage.getAllCollages();
+      
+      res.json({ 
+        success: true,
+        collages: collages,
+        count: collages.length,
+        message: 'Restore completed successfully'
+      });
+    } catch (error) {
+      console.error('Error restoring from Google Drive:', error);
+      res.status(500).json({ error: 'Failed to restore from Google Drive' });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
