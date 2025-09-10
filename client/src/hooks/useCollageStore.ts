@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { CollageImage, GridLayout, MirrorLayout, FilterOption } from '@shared/schema';
+import { apiRequest } from '@/lib/queryClient';
 
 interface CollageState {
   images: CollageImage[];
@@ -144,20 +145,54 @@ export function useCollageStore() {
     });
   }, []);
 
-  const saveProject = useCallback(() => {
+  const saveProject = useCallback(async (name?: string) => {
     const projectData = {
+      name: name || `Collage ${Date.now()}`,
       images: state.images,
-      selectedLayout: state.selectedLayout,
+      layout: state.selectedLayout,
       filters: state.filters,
       mirrorSettings: state.selectedMirror,
-      timestamp: Date.now()
     };
     
-    // Save to localStorage for now
-    localStorage.setItem(`collage-project-${Date.now()}`, JSON.stringify(projectData));
-    console.log('Project saved successfully!');
-    return projectData;
+    try {
+      const savedCollage = await apiRequest('/api/collages', {
+        method: 'POST',
+        body: JSON.stringify(projectData),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('Project saved successfully!', savedCollage);
+      return savedCollage;
+    } catch (error) {
+      console.error('Failed to save project:', error);
+      // Fallback to localStorage
+      localStorage.setItem(`collage-project-${Date.now()}`, JSON.stringify(projectData));
+      return projectData;
+    }
   }, [state]);
+
+  const loadProject = useCallback(async (collageId: string) => {
+    try {
+      const collage = await apiRequest(`/api/collages/${collageId}`);
+      
+      setState({
+        images: collage.images || [],
+        selectedLayout: collage.layout || null,
+        selectedMirror: collage.mirrorSettings || { type: 'vertical', parts: 2 },
+        filters: collage.filters || [],
+        history: [],
+        historyIndex: 0,
+      });
+      
+      console.log('Project loaded successfully!', collage);
+      return collage;
+    } catch (error) {
+      console.error('Failed to load project:', error);
+      throw error;
+    }
+  }, []);
 
   return {
     ...state,
@@ -169,6 +204,7 @@ export function useCollageStore() {
     redo,
     reset,
     saveProject,
+    loadProject,
     canUndo: state.historyIndex > 0,
     canRedo: state.historyIndex < state.history.length - 1,
   };
