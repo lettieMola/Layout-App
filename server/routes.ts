@@ -1,8 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCollageSchema } from "@shared/schema";
+import { insertCollageSchema, AIProcessRequestSchema, ChatRequestSchema } from "@shared/schema";
 import { z } from "zod";
+import { aiService } from "./ai";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Collage routes
@@ -78,7 +79,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Image processing endpoint for filters
+  // AI Image processing endpoint
+  app.post('/api/ai/process', async (req, res) => {
+    try {
+      const validatedData = AIProcessRequestSchema.parse(req.body);
+      const result = await aiService.processImage(validatedData);
+      res.json(result);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Invalid request data', details: error.errors });
+      } else {
+        console.error('Error processing image:', error);
+        res.status(500).json({ error: 'Failed to process image' });
+      }
+    }
+  });
+
+  // AI Chat assistant endpoint
+  app.post('/api/chat', async (req, res) => {
+    try {
+      const validatedData = ChatRequestSchema.parse(req.body);
+      const result = await aiService.chatWithAssistant(validatedData);
+      res.json(result);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Invalid chat request', details: error.errors });
+      } else {
+        console.error('Error in chat assistant:', error);
+        res.status(500).json({ error: 'Failed to process chat request' });
+      }
+    }
+  });
+
+  // Legacy image processing endpoint for backward compatibility
   app.post('/api/process-image', async (req, res) => {
     try {
       const { imageData, filter, effect } = req.body;
