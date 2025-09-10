@@ -65,7 +65,7 @@ export default function AITools({ images, selectedImageId, onAiProcessComplete, 
     }
 
     setProcessing(capabilityId);
-    setAssistantMessage(`🤖 Applying ${capabilityName}... please wait`);
+    setAssistantMessage(`Applying ${capabilityName}... please wait`);
 
     try {
       // Call new AI processing endpoint
@@ -78,14 +78,14 @@ export default function AITools({ images, selectedImageId, onAiProcessComplete, 
       const result = await response.json();
       
       if (result.success) {
-        setAssistantMessage(`✅ ${capabilityName} applied successfully!`);
+        setAssistantMessage(`${capabilityName} applied successfully!`);
         onAiProcessComplete(targetImage.id, result.processedImage, capabilityName);
         toast({
           title: "AI Processing Complete",
           description: result.message || `${capabilityName} applied successfully`,
         });
       } else {
-        setAssistantMessage(`❌ ${result.message || 'AI processing failed'}`);
+        setAssistantMessage(`${result.message || 'AI processing failed'}`);
         toast({
           title: "AI Processing Failed",
           description: result.message || "Please try again",
@@ -95,7 +95,7 @@ export default function AITools({ images, selectedImageId, onAiProcessComplete, 
       
     } catch (error) {
       console.error('AI processing error:', error);
-      setAssistantMessage('❌ AI processing failed. Please try again.');
+      setAssistantMessage('AI processing failed. Please try again.');
       toast({
         title: "Error",
         description: "AI processing failed. Please try again.",

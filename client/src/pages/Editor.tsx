@@ -128,6 +128,37 @@ export default function Editor() {
     });
   };
 
+  const handleAiToolAction = async (effect: string, imageId: string, capabilityName: string) => {
+    try {
+      const targetImage = images.find(img => img.id === imageId);
+      if (!targetImage) return;
+
+      const response = await apiRequest('POST', '/api/ai/process', {
+        imageData: targetImage.uri,
+        effect,
+        options: {}
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        handleAiProcessComplete(imageId, result.processedImage, capabilityName);
+      } else {
+        toast({
+          title: "AI Processing Failed",
+          description: result.message || "Please try again",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "AI processing failed. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleChatAction = (action: AssistantAction) => {
     switch (action.type) {
       case 'setLayout':
@@ -141,18 +172,18 @@ export default function Editor() {
         break;
       case 'removeBackground':
         if (images[action.imageIndex]) {
-          // Mock AI processing for demo
-          handleAiProcessComplete(images[action.imageIndex].id, images[action.imageIndex].uri, 'Background Removal');
+          // Call real AI processing
+          handleAiToolAction('bg_remove', images[action.imageIndex].id, 'Background Removal');
         }
         break;
       case 'enhanceFace':
         if (images[action.imageIndex]) {
-          handleAiProcessComplete(images[action.imageIndex].id, images[action.imageIndex].uri, 'Face Enhancement');
+          handleAiToolAction('face_enhance', images[action.imageIndex].id, 'Face Enhancement');
         }
         break;
       case 'upscale':
         if (images[action.imageIndex]) {
-          handleAiProcessComplete(images[action.imageIndex].id, images[action.imageIndex].uri, 'Image Upscaling');
+          handleAiToolAction('upscale', images[action.imageIndex].id, 'Image Upscaling');
         }
         break;
       case 'save':

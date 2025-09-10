@@ -103,7 +103,7 @@ export class AIService {
       if (openai) {
         // Use OpenAI's image generation for style transfer
         const analysisResponse = await openai.chat.completions.create({
-          model: "gpt-5",
+          model: "gpt-4o",
           messages: [
             {
               role: "user",
@@ -215,7 +215,7 @@ export class AIService {
       
       if (openai) {
         const visionResponse = await openai.chat.completions.create({
-          model: "gpt-5",
+          model: "gpt-4o",
           messages: [
             {
               role: "user",
@@ -310,7 +310,7 @@ You can suggest actions by responding with JSON that includes an 'actions' array
 Always be helpful, creative, and encouraging. Provide specific suggestions based on the user's needs.`;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-4o",
         messages: [
           { role: "system", content: systemPrompt },
           ...messages.map(msg => ({
