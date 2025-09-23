@@ -94,12 +94,13 @@ export const MIRROR_LAYOUTS: MirrorLayout[] = [
 
 export const DESIGN_OPTIONS = [
   { id: 'design-1', name: 'Collage', icon: 'grid-3x3' },
-  { id: 'design-2', name: 'Design', icon: 'palette' },
+  { id: 'design-2', name: 'Mirror', icon: 'app-window' },
+  { id: 'design-hd', name: 'HD Enhance', icon: 'sparkles' },
   { id: 'design-3', name: 'Customize', icon: 'settings' },
   { id: 'design-4', name: 'Instagram', icon: 'instagram' },
   { id: 'design-5', name: 'WhatsApp', icon: 'message-circle' },
   { id: 'design-6', name: 'Logo', icon: 'award' },
-  { id: 'design-7', name: 'Face Pr', icon: 'user' },
+  { id: 'design-7', name: 'Face Processing', icon: 'user' },
 ];
 
 export const FILTER_OPTIONS: FilterOption[] = [

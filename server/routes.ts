@@ -171,8 +171,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Mock Google Drive restore - in real implementation would fetch from Google Drive API
       // For demonstration, we'll return existing collages
       const collages = await storage.getAllCollages();
-      
-      res.json({ 
+
+      res.json({
         success: true,
         collages: collages,
         count: collages.length,
@@ -181,6 +181,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error restoring from Google Drive:', error);
       res.status(500).json({ error: 'Failed to restore from Google Drive' });
+    }
+  });
+
+  // Download collage endpoint
+  app.get('/api/collages/:id/download', async (req, res) => {
+    try {
+      const collage = await storage.getCollage(req.params.id);
+      if (!collage) {
+        res.status(404).json({ error: 'Collage not found' });
+        return;
+      }
+
+      // Create a simple HTML page that represents the collage
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${collage.name}</title>
+          <style>
+            body { margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f3f4f6; }
+            .collage { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            h1 { text-align: center; margin-bottom: 10px; color: #1f2937; }
+            .meta { text-align: center; color: #6b7280; margin-bottom: 30px; font-size: 14px; }
+            .grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+            .image-placeholder { background: #e5e7eb; border: 2px dashed #d1d5db; border-radius: 4px; display: flex; align-items: center; justify-content: center; min-height: 150px; color: #9ca3af; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="collage">
+            <h1>${collage.name}</h1>
+            <div class="meta">Created: ${new Date(collage.createdAt || Date.now()).toLocaleDateString()}</div>
+            <div class="grid">
+              ${collage.images && Array.isArray(collage.images) ?
+                collage.images.map((_, index) => `<div class="image-placeholder">Image ${index + 1}</div>`).join('') :
+                '<div class="image-placeholder">No images in collage</div>'
+              }
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      res.setHeader('Content-Type', 'text/html');
+      res.setHeader('Content-Disposition', `attachment; filename="collage-${collage.id}.html"`);
+      res.send(html);
+    } catch (error) {
+      console.error('Error generating collage download:', error);
+      res.status(500).json({ error: 'Failed to generate collage download' });
     }
   });
 

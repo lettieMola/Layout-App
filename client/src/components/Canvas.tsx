@@ -1,133 +1,153 @@
-import { forwardRef, useEffect, useRef } from "react";
-import { Card } from "@/components/ui/card";
-import { CollageImage, GridLayout, MirrorLayout } from "@shared/schema";
-import { ImageIcon, Grid3X3 } from "lucide-react";
 
-interface CanvasProps {
-  images: CollageImage[];
-  layout: GridLayout | null;
-  mirror?: MirrorLayout;
-  filters?: any[];
-  className?: string;
+import { forwardRef } from "react";
+import { Card } from "@/components/ui/card";
+import { ImageIcon, Grid3X3 } from "lucide-react";
+import { MirrorLayout, FilterOption, GridLayout } from "@shared/schema";
+
+interface EditorImage {
+  id: string;
+  src: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  filter?: string;
+  brightness?: number;
+  contrast?: number;
+  rotation?: number;
+  flippedX?: boolean;
+  flippedY?: boolean;
+  crop?: { x: number; y: number; width: number; height: number } | null;
+}
+interface EditorSticker {
+  id: string;
+  src: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+interface EditorText {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  fontSize: number;
+  color: string;
+  fontFamily: string;
 }
 
+interface CanvasProps {
+  images: EditorImage[];
+  layout: GridLayout | null;
+  stickers?: EditorSticker[];
+  texts?: EditorText[];
+  className?: string;
+  mirror?: MirrorLayout;
+  filters?: FilterOption[];
+  selectedFilter?: FilterOption | null;
+}
+
+
 const Canvas = forwardRef<HTMLDivElement, CanvasProps>(
-  ({ images, layout, mirror, filters, className }, ref) => {
-    const renderMirrorLayout = () => {
-      if (images.length === 0) {
-        return (
-          <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-            <ImageIcon className="w-12 h-12 mb-2" />
-            <p>Upload images to create your collage</p>
-          </div>
-        );
-      }
-
-      const imageUri = images[0].uri;
+  ({ images, layout, stickers = [], texts = [], className, mirror, selectedFilter }, ref) => {
+    if (mirror && images.length > 0) {
+      const firstImage = images[0];
+      const img = (transform = "") => <img src={firstImage.src} alt="Mirrored" className="w-full h-full object-cover" style={{ transform }} />;
       
-      switch (mirror?.type) {
-        case 'vertical':
-          return (
-            <div className="flex w-full h-64">
-              <div className="flex-1">
-                <img src={imageUri} alt="Original" className="w-full h-full object-cover" />
-              </div>
-              <div className="flex-1">
-                <img 
-                  src={imageUri} 
-                  alt="Mirrored" 
-                  className="w-full h-full object-cover scale-x-[-1]" 
-                />
-              </div>
-            </div>
-          );
-        case 'horizontal':
-          return (
-            <div className="flex flex-col w-full h-64">
-              <div className="flex-1">
-                <img src={imageUri} alt="Original" className="w-full h-full object-cover" />
-              </div>
-              <div className="flex-1">
-                <img 
-                  src={imageUri} 
-                  alt="Mirrored" 
-                  className="w-full h-full object-cover scale-y-[-1]" 
-                />
-              </div>
-            </div>
-          );
-        case 'quad':
-          return (
-            <div className="grid grid-cols-2 grid-rows-2 w-full h-64">
-              <img src={imageUri} alt="Original" className="w-full h-full object-cover" />
-              <img src={imageUri} alt="Mirrored X" className="w-full h-full object-cover scale-x-[-1]" />
-              <img src={imageUri} alt="Mirrored Y" className="w-full h-full object-cover scale-y-[-1]" />
-              <img src={imageUri} alt="Mirrored XY" className="w-full h-full object-cover scale-[-1]" />
-            </div>
-          );
-        default:
-          return (
-            <div className="w-full h-64">
-              <img src={imageUri} alt="Single" className="w-full h-full object-cover" />
-            </div>
-          );
+      let mirrorContent;
+      switch (mirror.type) {
+        case "vertical": mirrorContent = <div className="w-full h-full grid grid-cols-2">{img()}{img("scaleX(-1)")}</div>; break;
+        case "horizontal": mirrorContent = <div className="w-full h-full grid grid-rows-2">{img()}{img("scaleY(-1)")}</div>; break;
+        case "quad": mirrorContent = <div className="w-full h-full grid grid-cols-2 grid-rows-2">{img()}{img("scaleX(-1)")}{img("scaleY(-1)")}{img("scale(-1, -1)")}</div>; break;
+        default: mirrorContent = <div className="w-full h-full">{img()}</div>;
       }
-    };
-
-    const renderGridLayout = () => {
-      if (!layout) {
-        return (
-          <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-            <Grid3X3 className="w-12 h-12 mb-2" />
-            <p>Select a layout to start</p>
-          </div>
-        );
-      }
-
-      if (images.length === 0) {
-        return (
-          <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-            <ImageIcon className="w-12 h-12 mb-2" />
-            <p>Add images to create your collage</p>
-          </div>
-        );
-      }
-
-      const gridStyle = {
-        gridTemplateRows: `repeat(${layout.rows}, 1fr)`,
-        gridTemplateColumns: `repeat(${layout.cols}, 1fr)`,
-      };
 
       return (
-        <div className="grid gap-1 w-full h-64 p-2" style={gridStyle}>
-          {layout.layout.flat().map((cell, index) => {
-            if (cell === 0) return <div key={index} className="bg-transparent" />;
-            
+        <Card className={`p-4 relative ${className}`} ref={ref} data-testid="canvas">
+          <div className="aspect-square w-full bg-muted rounded-lg overflow-hidden">{mirrorContent}</div>
+        </Card>
+      );
+    }
+
+    if (!layout) {
+      return (
+        <Card className={`p-4 ${className}`} ref={ref} data-testid="canvas">
+          <div className="flex flex-col items-center justify-center h-64 text-muted-foreground bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/25">
+            <div className="w-16 h-16 bg-muted-foreground/10 rounded-full flex items-center justify-center mb-4">
+              <Grid3X3 className="w-8 h-8 text-muted-foreground/60" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Choose Your Layout</h3>
+            <p className="text-sm text-center max-w-xs">Select a layout from the options above to start creating your collage</p>
+          </div>
+        </Card>
+      );
+    }
+
+    if (images.length === 0) {
+      return (
+        <Card className={`p-4 ${className}`} ref={ref} data-testid="canvas">
+          <div className="flex flex-col items-center justify-center h-64 text-muted-foreground bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/20">
+            <div className="w-16 h-16 bg-muted-foreground/10 rounded-full flex items-center justify-center mb-4">
+              <ImageIcon className="w-8 h-8 text-muted-foreground/60" />
+            </div>
+            <p className="text-sm font-medium">Add images to create your collage</p>
+          </div>
+        </Card>
+      );
+    }
+
+    // Render layout cells with images
+    return (
+      <Card className={`p-4 relative ${className}`} ref={ref} data-testid="canvas">
+        <div className="grid gap-1 w-full h-64 p-2" style={{ gridTemplateColumns: `repeat(${layout.cols}, 1fr)`, gridTemplateRows: `repeat(${layout.rows}, 1fr)` }}>
+          {layout.layout.flat().map((cell: number, idx: number) => {
+            if (cell === 0) return <div key={idx} className="bg-transparent" />;
             const imageIndex = (cell - 1) % images.length;
-            const imageUri = images[imageIndex]?.uri;
-            
+            const image = images[imageIndex];
             return (
-              <div key={index} className="bg-muted rounded overflow-hidden">
-                {imageUri && (
-                  <img 
-                    src={imageUri} 
-                    alt={`Collage part ${index}`} 
-                    className="w-full h-full object-cover hover-elevate"
-                    data-testid={`image-cell-${index}`}
+              <div key={idx} className="bg-muted rounded overflow-hidden">
+                {image && (
+                  <img
+                    src={image.src}
+                    alt={`Collage part ${idx}`}
+                    className="w-full h-full object-cover"
+                    style={{
+                      filter: selectedFilter?.css || undefined,
+                      WebkitFilter: selectedFilter?.css || undefined
+                    }}
                   />
                 )}
               </div>
             );
           })}
         </div>
-      );
-    };
-
-    return (
-      <Card className={`p-4 ${className}`} ref={ref} data-testid="canvas">
-        <div className="space-y-4">
-          {mirror ? renderMirrorLayout() : renderGridLayout()}
-        </div>
+        {/* Stickers */}
+        {stickers.map((sticker) => (
+          <img
+            key={sticker.id}
+            src={sticker.src}
+            alt="sticker"
+            className="absolute cursor-move"
+            style={{ left: sticker.x, top: sticker.y, width: sticker.width, height: sticker.height }}
+          />
+        ))}
+        {/* Text overlays */}
+        {texts.map((text) => (
+          <div
+            key={text.id}
+            className="absolute cursor-move"
+            style={{
+              left: text.x,
+              top: text.y,
+              fontSize: text.fontSize,
+              color: text.color,
+              fontFamily: text.fontFamily,
+            }}
+          >
+            {text.text}
+          </div>
+        ))}
       </Card>
     );
   }

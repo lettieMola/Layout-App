@@ -1,347 +1,178 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useCollageStore } from "@/hooks/useCollageStore";
 import { toPng } from 'html-to-image';
-import Canvas from "@/components/Canvas";
-import ImagePicker from "@/components/ImagePicker";
-import LayoutSelector from "@/components/LayoutSelector";
-import MirrorControls from "@/components/MirrorControls";
-import AITools from "@/components/AITools";
-import FilterControls from "@/components/FilterControls";
-import ToolBar from "@/components/ToolBar";
-import BottomNavigation from "@/components/BottomNavigation";
-import ImageThumbnails from "@/components/ImageThumbnails";
-import ChatAssistant from "@/components/ChatAssistant";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, MessageCircle } from "lucide-react";
+import { ArrowLeft, MessageCircle, Image as ImageIcon, Grid3x3, AppWindow, Filter, Bot, Sticker, Type, Sparkles } from "lucide-react";
 import { useLocation } from "wouter";
 import { GRID_LAYOUTS } from "@/lib/constants";
-import { FilterOption, AssistantAction } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
+import Canvas from "@/components/Canvas";
+import ImagePicker, { EditorImage } from "@/components/ImagePicker";
+import LayoutSelector from "@/components/LayoutSelector";
+import FilterControls from "@/components/FilterControls";
+import AITools from "@/components/AITools";
+import ToolBar from "@/components/ToolBar";
+import ImageThumbnails from "@/components/ImageThumbnails";
+import ChatAssistant from "@/components/ChatAssistant";
+import StickerPicker from "@/components/StickerPicker";
+import MirroringControls from "@/pages/Mirror";
+import { FilterOption, CollageImage, GridLayout } from "@shared/schema";
+import TextTools from "@/pages/TextTools";
 
 export default function Editor() {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState('layouts');
+  const [activeTab, setActiveTab] = useState('');
+  const [isChatOpen, setChatOpen] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState<FilterOption | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  
+
   const {
-    images,
-    selectedLayout,
-    selectedMirror,
-    selectedImageId,
-    addImage,
-    removeImage,
-    setLayout,
-    setMirrorLayout,
-    selectImage,
-    replaceImage,
-    undo,
-    redo,
-    reset,
-    saveProject,
-    loadProject,
-    canUndo,
-    canRedo
+    images, selectedLayout, selectedMirror, selectedImageId,
+    addImage, removeImage, setLayout, setMirrorLayout, selectImage, replaceImage,
+    undo, redo, reset, saveProject, loadProject,
+    canUndo, canRedo
   } = useCollageStore();
 
-  // Initialize with first layout if none selected
-  const currentLayout = selectedLayout || GRID_LAYOUTS[0];
-
-  // Load existing collage if collageId is provided in URL
+  const [location] = useLocation();
   useEffect(() => {
-    const urlParams = new URLSearchParams(location.split('?')[1] || '');
-    const collageId = urlParams.get('collageId');
+    const params = new URLSearchParams(location.split('?')[1] || '');
+    const collageId = params.get('collageId');
+    const initialTab = params.get('tab');
     
+    if (images.length === 0 && !collageId) {
+      setActiveTab('images');
+    } else if (initialTab) {
+      setActiveTab(initialTab);
+    }
     if (collageId && loadProject) {
       setIsLoading(true);
       loadProject(collageId)
         .then(() => {
-          toast({
-            title: "Collage Loaded",
-            description: "Your collage has been loaded successfully",
-          });
+          toast({ title: "Collage Loaded", description: "Your collage has been loaded successfully" });
         })
-        .catch((error) => {
-          console.error('Failed to load collage:', error);
-          toast({
-            title: "Load Failed",
-            description: "Failed to load the collage",
-            variant: "destructive",
-          });
+        .catch((err) => {
+          console.error("Failed to load collage:", err);
+          toast({ title: "Load Failed", description: "Failed to load the collage", variant: "destructive" });
         })
         .finally(() => {
           setIsLoading(false);
         });
+    } else {
+      setIsLoading(false);
     }
-  }, [location, loadProject, toast]);
+  }, [location, loadProject, toast, images.length]);
 
-  const handleDownload = async () => {
+  const handleDownload = useCallback(async () => {
     if (!canvasRef.current) {
-      toast({
-        title: "Error",
-        description: "Canvas not found",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Canvas not found", variant: "destructive" });
       return;
     }
-
     try {
-      const dataUrl = await toPng(canvasRef.current, { quality: 0.95 });
+      const dataUrl = await toPng(canvasRef.current, { 
+        quality: 0.95,
+        pixelRatio: 2, // Increase pixel ratio for HD output
+        canvasWidth: canvasRef.current.offsetWidth * 2,
+        canvasHeight: canvasRef.current.offsetHeight * 2,
+      });
       const link = document.createElement('a');
       link.download = `collage-${Date.now()}.png`;
       link.href = dataUrl;
       link.click();
-      
-      toast({
-        title: "Success",
-        description: "Collage downloaded successfully!",
-      });
+      toast({ title: "Success", description: "Collage downloaded successfully!" });
     } catch (error) {
       console.error('Error downloading image:', error);
-      toast({
-        title: "Error",
-        description: "Failed to download collage",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to download collage", variant: "destructive" });
     }
-  };
+  }, [toast]);
 
   const handleSave = () => {
     saveProject();
-    toast({
-      title: "Success",
-      description: "Project saved successfully!",
-    });
+    toast({ title: "Success", description: "Project saved successfully!" });
   };
 
-  const handleAiProcessComplete = (imageId: string, result: string, effectName: string) => {
-    // Replace the processed image
-    replaceImage(imageId, result);
-    
-    toast({
-      title: "AI Processing Complete",
-      description: `${effectName} applied successfully!`,
-    });
+  const handleAiProcessComplete = (imageId: string, newImageUri: string, effectName: string) => {
+    replaceImage(imageId, newImageUri);
+    toast({ title: "AI Processing Complete", description: `${effectName} applied successfully!` });
   };
 
-  const handleAiToolAction = async (effect: string, imageId: string, capabilityName: string) => {
-    try {
-      const targetImage = images.find(img => img.id === imageId);
-      if (!targetImage) return;
-
-      const response = await apiRequest('POST', '/api/ai/process', {
-        imageData: targetImage.uri,
-        effect,
-        options: {}
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        handleAiProcessComplete(imageId, result.processedImage, capabilityName);
-      } else {
-        toast({
-          title: "AI Processing Failed",
-          description: result.message || "Please try again",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "AI processing failed. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleChatAction = (action: AssistantAction) => {
-    switch (action.type) {
-      case 'setLayout':
-        const layout = GRID_LAYOUTS.find(l => l.id === action.layoutId);
-        if (layout) {
-          setLayout(layout);
-        }
-        break;
-      case 'applyFilter':
-        if (action.filter) {
-          const filterOption: FilterOption = {
-            id: action.filter,
-            name: action.filter,
-            value: action.filter
-          };
-          setSelectedFilter(filterOption);
-          toast({
-            title: "Filter Applied",
-            description: `${action.filter} filter applied to your collage`,
-          });
-        }
-        break;
-      case 'removeBackground':
-        if (images[action.imageIndex]) {
-          // Call real AI processing
-          handleAiToolAction('bg_remove', images[action.imageIndex].id, 'Background Removal');
-        }
-        break;
-      case 'enhanceFace':
-        if (images[action.imageIndex]) {
-          handleAiToolAction('face_enhance', images[action.imageIndex].id, 'Face Enhancement');
-        }
-        break;
-      case 'upscale':
-        if (images[action.imageIndex]) {
-          handleAiToolAction('upscale', images[action.imageIndex].id, 'Image Upscaling');
-        }
-        break;
-      case 'save':
-        handleSave();
-        break;
-      case 'download':
-        handleDownload();
-        break;
+  const handleImageAdd = (image: EditorImage) => {
+    if (typeof image === 'string') {
+      addImage(image);
+    } else {
+      addImage(image.src);
     }
   };
 
   const renderTabContent = () => {
+    const layout: GridLayout = selectedLayout || GRID_LAYOUTS[0]; // Ensure layout is always defined
     switch (activeTab) {
-      case 'images':
-        return <ImagePicker onImageSelect={addImage} />;
-      case 'layouts':
-        return (
-          <LayoutSelector 
-            onLayoutSelect={setLayout} 
-            selectedLayout={currentLayout}
-          />
-        );
-      case 'mirror':
-        return (
-          <MirrorControls 
-            mirrorLayout={selectedMirror}
-            onLayoutChange={setMirrorLayout}
-          />
-        );
-      case 'filters':
-        return (
-          <FilterControls 
-            onFilterSelect={setSelectedFilter}
-            selectedFilter={selectedFilter}
-          />
-        );
-      case 'ai':
-        return (
-          <AITools 
-            images={images}
-            selectedImageId={selectedImageId}
-            onAiProcessComplete={handleAiProcessComplete}
-            onImageSelect={selectImage}
-          />
-        );
-      default:
-        return (
-          <LayoutSelector 
-            onLayoutSelect={setLayout} 
-            selectedLayout={currentLayout}
-          />
-        );
+      case 'images': return <ImagePicker onImageSelect={handleImageAdd} />;
+      case 'layouts': return <LayoutSelector onLayoutSelect={setLayout} selectedLayout={layout} />;
+      case 'mirror': return <MirroringControls />;
+      case 'filters': return <FilterControls onFilterSelect={setSelectedFilter} selectedFilter={selectedFilter} />;
+      case 'stickers': return <StickerPicker onSelect={() => {}} />;
+      case 'text': return <TextTools onAddText={() => {}} />;
+      case 'ai': return <AITools images={images} selectedImageId={selectedImageId} onAiProcessComplete={handleAiProcessComplete} onImageSelect={selectImage} />;
+      default: return <ImagePicker onImageSelect={handleImageAdd} />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col pb-16" data-testid="editor-page">
       {/* Header */}
-      <div className="p-4 border-b">
-        <div className="flex items-center justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              // Navigate back to gallery if we came from there, otherwise go home
-              const urlParams = new URLSearchParams(location.split('?')[1] || '');
-              const collageId = urlParams.get('collageId');
-              setLocation(collageId ? '/gallery' : '/');
-            }}
-            data-testid="button-back"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-          
-          <h1 className="text-lg font-semibold">Editor</h1>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsChatOpen(true)}
-            data-testid="button-open-chat"
-          >
-            <MessageCircle className="w-4 h-4" />
-          </Button>
-        </div>
+      <div className="p-4 border-b flex items-center justify-between bg-background/95 backdrop-blur-sm">
+        <Button variant="ghost" size="sm" onClick={() => setLocation('/')} data-testid="button-back">
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back
+        </Button>
+        <h1 className="text-lg font-semibold">Create Collage</h1>
+        <Button variant="ghost" size="sm" onClick={() => setChatOpen(true)} data-testid="button-open-chat">
+          <MessageCircle className="w-4 h-4" />
+        </Button>
       </div>
 
-      {/* Toolbar */}
-      <div className="px-4 py-2">
-        <ToolBar
-          onUndo={undo}
-          onRedo={redo}
-          onReset={reset}
-          onSave={handleSave}
-          onDownload={handleDownload}
-          canUndo={canUndo}
-          canRedo={canRedo}
-        />
+      {/* Main Toolbar */}
+      <div className="p-3 border-b bg-background">
+        <ToolBar onUndo={undo} onRedo={redo} onReset={reset} onSave={handleSave} onDownload={handleDownload} canUndo={canUndo} canRedo={canRedo} />
       </div>
 
       {/* Main Content */}
       <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-        {/* Canvas */}
-        <Canvas
-          ref={canvasRef}
-          images={images}
-          layout={activeTab === 'mirror' ? null : currentLayout}
-          mirror={activeTab === 'mirror' ? selectedMirror : undefined}
-          filters={selectedFilter ? [selectedFilter] : []}
-        />
-
-        {/* Image Thumbnails */}
-        {images.length > 0 && (
-          <ImageThumbnails
-            images={images}
-            onRemoveImage={removeImage}
-          />
-        )}
-
-        {/* Tab Content */}
         <div className="space-y-4">
+          <Canvas ref={canvasRef} images={images.map(img => ({...img, src: img.uri})) as EditorImage[]} layout={activeTab === 'mirror' ? null : selectedLayout || GRID_LAYOUTS[0]} mirror={activeTab === 'mirror' ? selectedMirror : undefined} selectedFilter={selectedFilter} />
+          {images.length > 0 && <ImageThumbnails images={images.map(img => ({...img, src: img.uri})) as EditorImage[]} onRemoveImage={removeImage} />}
+        </div>
+        <div className="pt-4">
           {renderTabContent()}
         </div>
       </div>
 
-      {/* Bottom Navigation */}
-      <div className="p-4 border-t bg-background">
-        <BottomNavigation
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          imageCount={images.length}
-        />
+      {/* Bottom Toolbar */}
+      <div className="p-3 border-t bg-background flex justify-around">
+        {[
+          { id: 'images', label: 'Images', icon: ImageIcon },
+          { id: 'layouts', label: 'Layouts', icon: Grid3x3 },
+          { id: 'filters', label: 'Filters', icon: Filter },
+          { id: 'mirror', label: 'Mirror', icon: AppWindow },
+          { id: 'stickers', label: 'Stickers', icon: Sticker },
+          { id: 'text', label: 'Text', icon: Type },
+          { id: 'ai', label: 'AI', icon: Sparkles },
+        ].map(tab => (
+          <Button
+            key={tab.id}
+            variant={activeTab === tab.id ? 'secondary' : 'ghost'}
+            size="sm"
+            className="flex flex-col h-auto w-16 gap-1 rounded-lg py-2"
+            onClick={() => setActiveTab(tab.id)}
+          >
+            <tab.icon className="w-4 h-4" />
+            <span className="text-xs">{tab.label}</span>
+          </Button>
+        ))}
       </div>
 
-      {/* Chat Assistant */}
-      <ChatAssistant
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        context={{
-          images: images.map(img => img.uri),
-          layout: selectedLayout?.id || null,
-          filters: [],
-        }}
-        onActionExecute={handleChatAction}
-      />
+      <ChatAssistant isOpen={isChatOpen} onClose={() => setChatOpen(false)} context={{ images: images.map(i => i.uri), layout: selectedLayout?.id ?? null, filters: [] }} onActionExecute={() => {}} />
     </div>
   );
 }

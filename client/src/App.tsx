@@ -6,6 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/Home";
 import Editor from "@/pages/Editor";
 import Gallery from "@/pages/Gallery";
+import Explore from "@/pages/Explore";
+import AllLayouts from "@/pages/AllLayouts";
+import Mirror from "@/pages/Mirror";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -13,6 +16,9 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/editor" component={Editor} />
+      <Route path="/explore" component={Explore} />
+      <Route path="/layouts" component={AllLayouts} />
+      <Route path="/mirror" component={Mirror} />
       <Route path="/gallery" component={Gallery} />
       <Route component={NotFound} />
     </Switch>

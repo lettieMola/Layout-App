@@ -1,8 +1,8 @@
 import ImagePicker from '../ImagePicker';
 
 export default function ImagePickerExample() {
-  const handleImageSelect = (uri: string) => {
-    console.log('Image selected:', uri);
+  const handleImageSelect = (img: any) => {
+    console.log('Image selected:', img);
   };
 
   return (

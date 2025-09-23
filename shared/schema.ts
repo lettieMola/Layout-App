@@ -16,6 +16,7 @@ export const collages = pgTable("collages", {
   layout: jsonb("layout"),
   filters: jsonb("filters"),
   mirrorSettings: jsonb("mirror_settings"),
+  preview: text("preview"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -30,6 +31,7 @@ export const insertCollageSchema = createInsertSchema(collages).pick({
   layout: true,
   filters: true,
   mirrorSettings: true,
+  preview: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -66,6 +68,7 @@ export interface FilterOption {
   name: string;
   type: string;
   value: number;
+  css?: string;
 }
 
 export interface AICapability {

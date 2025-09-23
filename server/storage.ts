@@ -51,7 +51,8 @@ export class MemStorage implements IStorage {
       layout: insertCollage.layout || null,
       filters: insertCollage.filters || null,
       mirrorSettings: insertCollage.mirrorSettings || null,
-      createdAt: new Date() 
+      preview: insertCollage.preview || null, // Ensure preview is not undefined
+      createdAt: new Date(),
     };
     this.collages.set(id, collage);
     return collage;
@@ -64,7 +65,7 @@ export class MemStorage implements IStorage {
   async updateCollage(id: string, updates: Partial<InsertCollage>): Promise<Collage | undefined> {
     const existingCollage = this.collages.get(id);
     if (!existingCollage) return undefined;
-    
+
     const updatedCollage: Collage = { ...existingCollage, ...updates };
     this.collages.set(id, updatedCollage);
     return updatedCollage;
@@ -76,7 +77,7 @@ export class MemStorage implements IStorage {
 
   async getAllCollages(): Promise<Collage[]> {
     return Array.from(this.collages.values()).sort(
-      (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
     );
   }
 }

@@ -17,7 +17,7 @@ const HomeScreen = () => {
 
   return (
     <div className="home-screen">
-      <h1># Search Birthday, Love, Sale...</h1>
+      <h1># Search layout, Styles, Grid...</h1>
       
       <div className="design-options">
         <h2>All Tools</h2>

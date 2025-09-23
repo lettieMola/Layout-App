@@ -3,13 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Download, Edit, Search, Upload, Cloud, RefreshCw } from "lucide-react";
+import { Trash2, Download, Edit, Search, Upload, Cloud, RefreshCw, Home as HomeIcon, Heart, User as UserIcon } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Collage } from "@shared/schema";
 import DriveIntegration from "@/components/DriveIntegration";
+import { toPng } from 'html-to-image';
 
 export default function Gallery() {
   const [, setLocation] = useLocation();
@@ -35,7 +36,7 @@ export default function Gallery() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/collages'] });
       toast({
-        title: "Success",
+        title: "Deleted",
         description: "Collage deleted successfully",
       });
     },
@@ -43,6 +44,35 @@ export default function Gallery() {
       toast({
         title: "Error",
         description: "Failed to delete collage",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Download collage mutation
+  const downloadMutation = useMutation({
+    mutationFn: async (collageId: string) => {
+      const response = await apiRequest('GET', `/api/collages/${collageId}/download`);
+      return await response.blob();
+    },
+    onSuccess: (blob, collageId) => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `collage-${collageId}.png`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast({
+        title: "Downloaded",
+        description: "Collage downloaded successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to download collage",
         variant: "destructive",
       });
     },
@@ -97,8 +127,8 @@ export default function Gallery() {
     collage.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleEdit = (collageId: string) => {
-    setLocation(`/editor?collageId=${collageId}`);
+  const handleEdit = (collage: Collage) => {
+    setLocation(`/editor?collageId=${collage.id}`);
   };
 
   const handleDelete = (collageId: string) => {
@@ -107,37 +137,8 @@ export default function Gallery() {
     }
   };
 
-  const handleDownload = async (collage: Collage) => {
-    // Create a simple canvas to generate download
-    const canvas = document.createElement('canvas');
-    canvas.width = 400;
-    canvas.height = 400;
-    const ctx = canvas.getContext('2d');
-    
-    if (ctx) {
-      ctx.fillStyle = '#f0f0f0';
-      ctx.fillRect(0, 0, 400, 400);
-      ctx.fillStyle = '#333';
-      ctx.font = '20px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(collage.name, 200, 200);
-    }
-    
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.download = `${collage.name}.png`;
-        link.href = url;
-        link.click();
-        URL.revokeObjectURL(url);
-      }
-    });
-
-    toast({
-      title: "Download Started",
-      description: "Collage download initiated",
-    });
+  const handleDownload = (collage: Collage) => {
+    downloadMutation.mutate(collage.id);
   };
 
   const handleBackupToDrive = async () => {
@@ -170,27 +171,27 @@ export default function Gallery() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-16">
       <div className="max-w-4xl mx-auto p-4 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between py-2">
           <div>
-            <h1 className="text-2xl font-bold">My Collages</h1>
-            <p className="text-muted-foreground">
-              {collages.length} saved collage{collages.length !== 1 ? 's' : ''}
+            <h1 className="text-xl font-bold">My Gallery</h1>
+            <p className="text-sm text-muted-foreground">
+              {collages.length} collage{collages.length !== 1 ? 's' : ''}
             </p>
           </div>
-          
+
           <div className="flex gap-2">
             <Button
               onClick={() => refetch()}
-              variant="outline"
+              variant="ghost"
               size="sm"
               data-testid="button-refresh"
             >
               <RefreshCw className="w-4 h-4" />
             </Button>
-            
+
             <Button
               onClick={handleBackupToDrive}
               variant="outline"
@@ -203,14 +204,15 @@ export default function Gallery() {
               ) : (
                 <Cloud className="w-4 h-4" />
               )}
-              {isBackingUp || backupMutation.isPending ? 'Backing up...' : 'Backup to Drive'}
             </Button>
-            
+
             <Button
               onClick={() => setLocation('/editor')}
+              size="sm"
               data-testid="button-create-new"
             >
-              Create New
+              <Edit className="w-4 h-4 mr-2" />
+              Create
             </Button>
           </div>
         </div>
@@ -220,108 +222,125 @@ export default function Gallery() {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Search collages..."
+            placeholder="Search your collages..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-10 rounded-full"
             data-testid="input-search-collages"
           />
         </div>
 
         {/* Collages Grid */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i} className="h-64 animate-pulse">
-                <CardContent className="p-4">
-                  <div className="bg-muted h-32 rounded mb-4"></div>
-                  <div className="bg-muted h-4 rounded mb-2"></div>
-                  <div className="bg-muted h-3 rounded w-1/2"></div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1">
+            {[...Array(8)].map((_, i) => (
+              <Card key={i} className="border-0 shadow-none">
+                <CardContent className="p-0">
+                  <div className="aspect-square bg-muted animate-pulse rounded"></div>
+                  <div className="p-3 space-y-2">
+                    <div className="bg-muted h-3 rounded animate-pulse"></div>
+                    <div className="bg-muted h-2 rounded animate-pulse w-2/3"></div>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         ) : filteredCollages.length === 0 ? (
-          <Card className="p-8 text-center">
-            <div className="space-y-4">
-              <Upload className="w-12 h-12 mx-auto text-muted-foreground" />
-              <div>
-                <h3 className="text-lg font-semibold">No collages found</h3>
-                <p className="text-muted-foreground">
-                  {searchQuery ? "Try a different search term" : "Create your first collage to get started"}
-                </p>
-              </div>
-              <Button onClick={() => setLocation('/editor')}>
-                Create New Collage
-              </Button>
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-6">
+              <Upload className="w-10 h-10 text-muted-foreground" />
             </div>
-          </Card>
+            <div className="space-y-2 mb-6">
+              <h3 className="text-lg font-semibold">No collages yet</h3>
+              <p className="text-muted-foreground max-w-sm">
+                {searchQuery ? "Try a different search term" : "Create your first collage to get started"}
+              </p>
+            </div>
+            <Button onClick={() => setLocation('/editor')} className="rounded-full">
+              <Edit className="w-4 h-4 mr-2" />
+              Create Your First Collage
+            </Button>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1">
             {filteredCollages.map((collage: Collage) => (
-              <Card key={collage.id} className="hover-elevate cursor-pointer group">
-                <CardContent className="p-4">
+              <Card key={collage.id} className="hover-elevate cursor-pointer group border-0 shadow-none">
+                <CardContent className="p-0">
                   {/* Thumbnail */}
-                  <div 
-                    className="bg-muted h-32 rounded mb-4 flex items-center justify-center"
-                    onClick={() => handleEdit(collage.id)}
+                  <div
+                    className="aspect-square bg-muted flex items-center justify-center overflow-hidden cursor-pointer relative"
+                    onClick={() => handleEdit(collage)}
                   >
-                    <div className="text-muted-foreground text-center">
-                      <Upload className="w-8 h-8 mx-auto mb-2" />
-                      <p className="text-sm">Collage Preview</p>
-                    </div>
-                  </div>
-                  
-                  {/* Info */}
-                  <div className="space-y-2">
-                    <div className="flex items-start justify-between">
-                      <h3 
-                        className="font-semibold truncate flex-1 cursor-pointer hover:text-primary"
-                        onClick={() => handleEdit(collage.id)}
-                        data-testid={`text-collage-name-${collage.id}`}
-                      >
-                        {collage.name}
-                      </h3>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {getImageCount(collage)} images
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {collage.createdAt ? formatDate(collage.createdAt) : 'No date'}
-                      </span>
-                    </div>
-                    
-                    {/* Actions */}
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {collage.preview ? (
+                      <img src={collage.preview} alt={collage.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="text-muted-foreground text-center p-4">
+                        <Upload className="w-8 h-8 mx-auto mb-2" />
+                        <p className="text-xs">Collage Preview</p>
+                      </div>
+                    )}
+
+                    {/* Overlay Actions */}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       <Button
                         size="sm"
-                        variant="ghost"
-                        onClick={() => handleEdit(collage.id)}
+                        variant="secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(collage);
+                        }}
                         data-testid={`button-edit-${collage.id}`}
+                        className="rounded-full"
                       >
-                        <Edit className="w-4 h-4" />
+                        <Edit className="w-3 h-3" />
                       </Button>
-                      
+
                       <Button
                         size="sm"
-                        variant="ghost"
-                        onClick={() => handleDownload(collage)}
+                        variant="secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownload(collage);
+                        }}
                         data-testid={`button-download-${collage.id}`}
+                        className="rounded-full"
                       >
-                        <Download className="w-4 h-4" />
+                        <Download className="w-3 h-3" />
                       </Button>
-                      
+
                       <Button
                         size="sm"
-                        variant="ghost"
-                        onClick={() => handleDelete(collage.id)}
+                        variant="destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(collage.id);
+                        }}
                         disabled={deleteMutation.isPending}
                         data-testid={`button-delete-${collage.id}`}
+                        className="rounded-full"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3 h-3" />
                       </Button>
+                    </div>
+                  </div>
+
+                  {/* Info */}
+                  <div className="p-3 space-y-1">
+                    <h3
+                      className="font-medium text-sm truncate cursor-pointer hover:text-primary"
+                      onClick={() => handleEdit(collage)}
+                      data-testid={`text-collage-name-${collage.id}`}
+                    >
+                      {collage.name}
+                    </h3>
+
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <Badge variant="secondary" className="text-xs px-2 py-0">
+                        {getImageCount(collage)} images
+                      </Badge>
+                      <span>
+                        {collage.createdAt ? formatDate(collage.createdAt) : 'No date'}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -341,11 +360,55 @@ export default function Gallery() {
           }}
         />
 
-        {/* Back to Home */}
-        <div className="flex justify-center pt-8">
-          <Button variant="outline" onClick={() => setLocation('/')}>
-            Back to Home
-          </Button>
+        {/* Bottom Navigation */}
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50">
+          <div className="flex justify-around items-center py-2 max-w-md mx-auto">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex flex-col gap-1 h-auto py-2"
+              onClick={() => setLocation('/')}
+            >
+              <HomeIcon className="w-5 h-5" />
+              <span className="text-xs">Home</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex flex-col gap-1 h-auto py-2"
+              onClick={() => setLocation('/explore')}
+            >
+              <Search className="w-5 h-5" />
+              <span className="text-xs">Search</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex flex-col gap-1 h-auto py-2 rounded-full border-2 border-primary"
+              onClick={() => setLocation('/editor')}
+            >
+              <Edit className="w-5 h-5" />
+              <span className="text-xs">Create</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex flex-col gap-1 h-auto py-2"
+              onClick={() => setLocation('/mirror')}
+            >
+              <Heart className="w-5 h-5" />
+              <span className="text-xs">Activity</span>
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              className="flex flex-col gap-1 h-auto py-2"
+              onClick={() => {}}
+            >
+              <UserIcon className="w-5 h-5" />
+              <span className="text-xs">Profile</span>
+            </Button>
+          </div>
         </div>
       </div>
     </div>

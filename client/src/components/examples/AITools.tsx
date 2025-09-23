@@ -6,16 +6,17 @@ export default function AIToolsExample() {
     { id: '1', uri: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop' },
   ];
 
-  const handleAiProcessComplete = (imageIndex: number, result: string, effectName: string) => {
-    console.log('AI processing complete:', { imageIndex, result, effectName });
+  const handleAiProcessComplete = (imageId: string, result: string, effectName: string) => {
+    console.log('AI processing complete:', { imageId, result, effectName });
   };
 
   return (
     <div className="p-4 max-w-lg mx-auto">
       <AITools 
         images={mockImages}
-        onAiProcessComplete={handleAiProcessComplete}
-      />
+        onAiProcessComplete={handleAiProcessComplete} selectedImageId={null} onImageSelect={function (imageId: string | null): void {
+          throw new Error('Function not implemented.');
+        } }      />
     </div>
   );
 }
