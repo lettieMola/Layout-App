@@ -1,5 +1,6 @@
 import Canvas from '../Canvas';
 import { GRID_LAYOUTS } from '@/lib/constants';
+import { GridLayout } from '@shared/schema';
 
 export default function CanvasExample() {
   // Mock images for demonstration (match EditorImage shape)
@@ -9,18 +10,34 @@ export default function CanvasExample() {
     { id: '3', src: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=400&fit=crop', x: 0, y: 0, width: 200, height: 200 },
   ];
 
+  const gridLayout2x2: GridLayout = {
+    id: 'grid-2x2',
+    name: '2x2',
+    shape: 'rect',
+    rows: 2,
+    cols: 2,
+    layout: [
+      [0, 1],
+      [2, 3]
+    ]
+  };
+
+  const singleLayout: GridLayout = {
+    id: 'single',
+    name: 'Single',
+    shape: 'rect',
+    rows: 1,
+    cols: 1,
+    layout: [[0]]
+  };
+
   return (
     <div className="p-4 max-w-lg mx-auto space-y-4">
       <div>
         <h3 className="text-lg font-semibold mb-2">Grid Layout Example</h3>
         <Canvas 
           images={mockImages}
-          layout={{ id: 'grid-2x2', name: '2x2', cells: [
-            { x: 0, y: 0, width: 50, height: 50 },
-            { x: 50, y: 0, width: 50, height: 50 },
-            { x: 0, y: 50, width: 50, height: 50 },
-            { x: 50, y: 50, width: 50, height: 50 },
-          ] }}
+          layout={gridLayout2x2}
         />
       </div>
       
@@ -28,7 +45,7 @@ export default function CanvasExample() {
         <h3 className="text-lg font-semibold mb-2">Single Image Example</h3>
         <Canvas 
           images={[mockImages[0]]}
-          layout={{ id: 'single', name: 'Single', cells: [{ x: 0, y: 0, width: 100, height: 100 }] }}
+          layout={singleLayout}
         />
       </div>
     </div>

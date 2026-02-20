@@ -5,7 +5,7 @@ import { FilterOption } from '@shared/schema';
 export default function FilterControlsExample() {
   const [selectedFilter, setSelectedFilter] = useState<FilterOption | null>(null);
 
-  const handleFilterSelect = (filter: FilterOption) => {
+  const handleFilterSelect = (filter: FilterOption | null) => {
     console.log('Filter selected:', filter);
     setSelectedFilter(filter);
   };
